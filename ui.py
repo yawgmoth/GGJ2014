@@ -14,6 +14,7 @@ def main():
     left, right, space = 0, 0, 0
     while 1:
         clock.tick(60)
+        click = 0
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == K_ESCAPE:
@@ -31,10 +32,12 @@ def main():
                     left = 0
                 elif event.key == K_SPACE:
                     space = 0
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                click = 1
             if event.type == pygame.QUIT:
                 sys.exit(0)
         screen.fill((0,0,0))
-        game.update(screen, left, right, space)
+        game.update(screen, left, right, space, click, pygame.mouse.get_pos())
         pygame.display.flip()
 
 if __name__ == "__main__":
