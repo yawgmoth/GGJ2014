@@ -80,17 +80,17 @@ def interpret(program, io, loc={}, glob={}, tape=[0], rtape=[0], position=0):
             if position > 0:
                 tape[position] += 1
             else:
-                rtape[position] += 1
+                rtape[-position] += 1
         elif c == '-':
             if position > 0:
                 tape[position] -= 1
             else:
-                rtape[position] -= 1
+                rtape[-position] -= 1
         elif c == '.':
             if position > 0:
                 io.write(tape[position])
             else:
-                io.write(rtape[position])
+                io.write(rtape[-position])
         elif c == ',':
             if position > 0:
                 tape[position] = io.read()
@@ -100,7 +100,7 @@ def interpret(program, io, loc={}, glob={}, tape=[0], rtape=[0], position=0):
             if position > 0:
                 curval = tape[position]
             else:
-                curval = rtape[position]
+                curval = rtape[-position]
             if curval == 0:
                 level = 0
                 while curprog < len(program) and (program[curprog] != "]" or level != 1):
@@ -113,7 +113,7 @@ def interpret(program, io, loc={}, glob={}, tape=[0], rtape=[0], position=0):
             if position > 0:
                 curval = tape[position]
             else:
-                curval = rtape[position]
+                curval = rtape[-position]
             if curval != 0:
                 level = 0
                 i = curprog - 1
@@ -160,8 +160,15 @@ def interpret(program, io, loc={}, glob={}, tape=[0], rtape=[0], position=0):
                 if position > 0:
                     tape[position] = res
                 else:
-                    rtape[position] = res
+                    rtape[-position] = res
             curprog = j
+        elif c == "#":
+            print "prog at", curprog, "tape at", position, "value",
+            if position > 0:
+                print tape[position]
+            else:
+                print rtape[-position]
+            print tape[:20]
         curprog += 1
     return position
 

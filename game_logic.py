@@ -44,6 +44,11 @@ def make_set_zoom(game):
     def set_zoom(*args):
         game.set_zoom(args[0])
     return set_zoom
+    
+def make_set_anchor(game):
+    def set_anchor(*args):
+        game.set_anchor(*args)
+    return set_anchor
 
 LEFT = 1
 RIGHT = 2
@@ -136,6 +141,8 @@ class Game(object):
         return (x-self.anchor[0])*self.current_zoom
     def toscreeny(self, y):
         return (y-self.anchor[1])*self.current_zoom
+    def set_anchor(self, x,y):
+        self.anchor = (x,y)
 
 RULE_DIR = "rules"
 
@@ -161,6 +168,7 @@ class GameObject:
         gl = make_get_data_len(game)
         dz = make_dozoom(game)
         sz = make_set_zoom(game)
+        sa = make_set_anchor(game)
         def dr(*args):
             r,g,b = args[:3]
             x,y,w,h = args[3:7]
@@ -190,11 +198,12 @@ class GameObject:
         gl = make_get_data_len(game)
         dz = make_dozoom(game)
         sz = make_set_zoom(game)
+        sa = make_set_anchor(game)
         def dr(*args):
             r,g,b = args[:3]
             x,y,w,h = args[3:7]
             width = args[7]
-            pygame.draw.rect(screen, (r,g,b), pygame.Rect(game.zoom(x),game.zoom(y),game.zoom(w),game.zoom(h)), width)
+            pygame.draw.rect(screen, (r,g,b), pygame.Rect(game.toscreenx(x),game.toscreeny(y),game.zoom(w),game.zoom(h)), width)
         def txt(*args):
             size = args[0]
             r,g,b = args[1:4]
@@ -206,7 +215,6 @@ class GameObject:
         def p(*args):
             print args
         self.data = brainfuck.call_bf(self.collide_code, [overlap, 0] + self.data + [0, other.id] + other.data, locals(), globals())
-    
 
 def test_coll(a,b):
     print a, b, to_name(collide(a,b))
