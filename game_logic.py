@@ -44,6 +44,9 @@ def make_set_zoom(game):
     def set_zoom(*args):
         game.set_zoom(args[0])
     return set_zoom
+    
+def collide(a, b):
+    return False
 
 class Game(object):
     def __init__(self):
@@ -65,8 +68,15 @@ class Game(object):
     def update(self, screen, left, right, space):
         for o in self.objects:
             o.update(self, screen, left, right, space)
+        bbs = map(lambda o: [o, o.get_bb()], self.objects)
+        for i,b in enumerate(bbs):
+            for b1 in bbs[i+1:]:
+                if collide(b[1], b1[1]):
+                    b[0].collide(b1[0], self, screen)
+                    b1[0].collide(b[0], self, screen)
     def spawn(self, id, what):
         self.objects.append(what)
+        what.id = id
         self.obj_ids[id] = what
     def set_data(self, id, data):
         self.obj_ids[id].data = data
@@ -98,8 +108,7 @@ class GameObject:
         sz = make_set_zoom(game)
         self.data = brainfuck.call_bf(init_code, [], locals(), globals())
     def update(self, game, screen, left, right, space):
-        t1 = time.time()
-        objects = []
+        
         sp = make_spawn(game)
         sd = make_set_data(game)
         gd = make_get_data(game)
@@ -121,7 +130,33 @@ class GameObject:
             screen.blit(text, (game.zoom(x),game.zoom(y)))
         def p(*args):
             print args
+        t1 = time.time()
         self.data = brainfuck.call_bf(self.update_code, [t1-self.t, left, right, space, 0, 0, 0] + self.data, locals(), globals())
         self.t = t1
+    def get_bb(self):
+        return brainfuck.call_bf(self.bounding_box, self.data, locals(), globals())
+    def collide(self, other, game, screen):
+        sp = make_spawn(game)
+        sd = make_set_data(game)
+        gd = make_get_data(game)
+        gl = make_get_data_len(game)
+        dz = make_dozoom(game)
+        sz = make_set_zoom(game)
+        def dr(*args):
+            r,g,b = args[:3]
+            x,y,w,h = args[3:7]
+            width = args[7]
+            pygame.draw.rect(screen, (r,g,b), pygame.Rect(game.zoom(x),game.zoom(y),game.zoom(w),game.zoom(h)), width)
+        def txt(*args):
+            size = args[0]
+            r,g,b = args[1:4]
+            x,y = args[4:6]
+            txt = "".join(map(chr, args[6:-1]))
+            font = pygame.font.Font(None, size)
+            text = font.render(txt, 1, (r,g,b))
+            screen.blit(text, (game.zoom(x),game.zoom(y)))
+        def p(*args):
+            print args
+        self.data = brainfuck.call_bf(self.update_code, self.data + [0, other.id] + other.data, locals(), globals())
     
 
