@@ -2,6 +2,8 @@ import sys
 import os
 
 def get_content(fname):
+    if not os.path.exists(fname):
+        return ""
     f = open(fname, "r")
     result = ""
     for line in f:
@@ -26,6 +28,7 @@ class CallIO:
         return a
     def write(self, c):
         self.output.append(c)
+        
         
 class FunArgIO:
     def __init__(self, outer):
@@ -58,7 +61,7 @@ def call_bf(program, args, loc={}, glob={}):
             
         return res
     loc["s"] = s
-    interpret(program, c, loc, glob)
+    interpret(program, c, loc, glob, tape=[0], rtape=[0])
     return c.output
 
 def interpret(program, io, loc={}, glob={}, tape=[0], rtape=[0], position=0):
@@ -93,6 +96,19 @@ def interpret(program, io, loc={}, glob={}, tape=[0], rtape=[0], position=0):
                 tape[position] = io.read()
             else:
                 rtape[position] = io.read()
+        elif c == '[':
+            if position > 0:
+                curval = tape[position]
+            else:
+                curval = rtape[position]
+            if curval == 0:
+                level = 0
+                while curprog < len(program) and (program[curprog] != "]" or level != 1):
+                    if program[curprog] == "[":
+                        level += 1
+                    elif program[curprog] == "]":
+                        level -= 1
+                    curprog += 1
         elif c == ']':
             if position > 0:
                 curval = tape[position]
@@ -102,7 +118,7 @@ def interpret(program, io, loc={}, glob={}, tape=[0], rtape=[0], position=0):
                 level = 0
                 i = curprog - 1
                 found = False
-                while i > 0 and not found:
+                while i >= 0 and not found:
                     if program[i] == '[' and level == 0:
                         found = True
                     elif program[i] == '[':
@@ -113,7 +129,7 @@ def interpret(program, io, loc={}, glob={}, tape=[0], rtape=[0], position=0):
                 if found:
                     curprog = i
                 else:
-                    raise 'Syntax error, bracket mismatch'
+                    raise Exception('Syntax error, bracket mismatch')
         elif c == ":":
             j = curprog + 1
             openat = curprog + 1
@@ -168,3 +184,5 @@ if __name__ == '__main__':
         return 7
     print "1:", map(chr, call_bf(':s(+++++ +++++ [> +++++ +++++<-]>+++++ [>+>+>+<<<-]>. >+++++. >------.) .', [1], locals(), globals()))
     print "2:", call_bf(',:g(.).', [1], locals(), globals())
+    print "3:", call_bf(',[+].,++++.>>>>>>>>>>>++>+>+>+++<[>[-<+++>]<<]>.', [0, 1], locals(), globals())
+    print "4:", call_bf('+++++ +++++ [>+++++++<-]>++. +++++++++++++++++++++++++++++. +++++++. . +++.', [], locals(), globals())

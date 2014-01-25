@@ -34,11 +34,22 @@ def make_get_data_len(game):
         id = args[0]
         return game.get_data_len(id, i)
     return get_data_len
+    
+def make_dozoom(game):
+    def dozoom(*args):
+        game.dozoom(args[0])
+    return dozoom
+    
+def make_set_zoom(game):
+    def set_zoom(*args):
+        game.set_zoom(args[0])
+    return set_zoom
 
 class Game(object):
     def __init__(self):
         self.objects = []
         self.obj_ids = {}
+        self.current_zoom = 1
     def load_level(self, level):
         fname = os.path.join(LEVEL_DIR, level + ".lvl")
         if not os.path.exists(fname):
@@ -48,10 +59,12 @@ class Game(object):
         sd = make_set_data(self)
         gd = make_get_data(self)
         gl = make_get_data_len(self)
+        dz = make_dozoom(self)
+        sz = make_set_zoom(self)
         brainfuck.call_bf(brainfuck.get_content(fname), [], locals(), globals())
-    def update(self, screen):
+    def update(self, screen, left, right, space):
         for o in self.objects:
-            o.update(self, screen)
+            o.update(self, screen, left, right, space)
     def spawn(self, id, what):
         self.objects.append(what)
         self.obj_ids[id] = what
@@ -61,32 +74,54 @@ class Game(object):
         return self.obj_ids[id].data[i]
     def get_data_len(self, id):
         return len(self.obj_ids[id].data)
+    def zoom(self, v):
+        return v*self.current_zoom
+    def dozoom(self, f):
+        self.current_zoom *= f
+    def set_zoom(self, z):
+        self.current_zoom = z
 
 RULE_DIR = "rules"
 
 class GameObject:
     def __init__(self, name, game):
         self.update_code = brainfuck.get_content(os.path.join(RULE_DIR, name + ".update"))
+        self.bounding_box = brainfuck.get_content(os.path.join(RULE_DIR, name + ".bb"))
+        self.collide = brainfuck.get_content(os.path.join(RULE_DIR, name + ".col"))
         init_code = brainfuck.get_content(os.path.join(RULE_DIR, name + ".init"))
         self.t = time.time()
         sp = make_spawn(game)
         sd = make_set_data(game)
         gd = make_get_data(game)
         gl = make_get_data_len(game)
+        dz = make_dozoom(game)
+        sz = make_set_zoom(game)
         self.data = brainfuck.call_bf(init_code, [], locals(), globals())
-    def update(self, game, screen):
+    def update(self, game, screen, left, right, space):
         t1 = time.time()
         objects = []
         sp = make_spawn(game)
         sd = make_set_data(game)
         gd = make_get_data(game)
         gl = make_get_data_len(game)
+        dz = make_dozoom(game)
+        sz = make_set_zoom(game)
         def dr(*args):
             r,g,b = args[:3]
             x,y,w,h = args[3:7]
             width = args[7]
-            pygame.draw.rect(screen, (r,g,b), pygame.Rect(x,y,w,h), width)
-        self.data = brainfuck.call_bf(self.update_code, [t1-self.t] + self.data, locals(), globals())
+            pygame.draw.rect(screen, (r,g,b), pygame.Rect(game.zoom(x),game.zoom(y),game.zoom(w),game.zoom(h)), width)
+        def txt(*args):
+            size = args[0]
+            r,g,b = args[1:4]
+            x,y = args[4:6]
+            txt = "".join(map(chr, args[6:-1]))
+            font = pygame.font.Font(None, size)
+            text = font.render(txt, 1, (r,g,b))
+            screen.blit(text, (game.zoom(x),game.zoom(y)))
+        def p(*args):
+            print args
+        self.data = brainfuck.call_bf(self.update_code, [t1-self.t, left, right, space, 0, 0, 0] + self.data, locals(), globals())
         self.t = t1
     
 
