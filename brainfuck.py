@@ -1,11 +1,20 @@
 import sys
+import os
+
+def get_content(fname):
+    f = open(fname, "r")
+    result = ""
+    for line in f:
+        result += line.strip()
+    f.close()
+    return result
 
 class ConsoleIO:
     def read(self):
         return ord(raw_input()[0])
     def write(self, c):
         print chr(c),
-    
+
 class CallIO:
     def __init__(self, args):
         self.args = args
@@ -17,17 +26,42 @@ class CallIO:
         return a
     def write(self, c):
         self.output.append(c)
-    
-def call_bf(program, args):
+        
+class FunArgIO:
+    def __init__(self, outer):
+        self.outer = outer
+        self.output = []
+    def read(self):
+        return self.outer.read()
+    def write(self, c):
+        self.output.append(c)
+        
+MODULE_DIR = "modules"
+
+def call_bf(program, args, loc={}, glob={}):
     c = CallIO(args)
-    interpret(program, c)
+    def s(*args):
+        if ord("(") in args:
+            name = "".join(map(chr, args[:args.index(ord("("))]))
+            params = args[args.index(ord("("))+1:-1]
+        else:
+            name = "".join(map(chr, args))
+            params = []
+        fname = os.path.join(MODULE_DIR, name + ".bf")
+        res = -1
+        if os.path.exists(fname):
+            res = call_bf(get_content(fname), params, loc, glob)
+            if res:
+                res = res[0]
+            else:
+                res = 0
+            
+        return res
+    loc["s"] = s
+    interpret(program, c, loc, glob)
     return c.output
 
-
-def interpret(program, io):
-    tape = [0]
-    rtape = [0]
-    position = 0
+def interpret(program, io, loc={}, glob={}, tape=[0], rtape=[0], position=0):
     curprog = 0
     while curprog < len(program):
         c = program[curprog]
@@ -80,8 +114,40 @@ def interpret(program, io):
                     curprog = i
                 else:
                     raise 'Syntax error, bracket mismatch'
-        
+        elif c == ":":
+            j = curprog + 1
+            openat = curprog + 1
+            level = 0
+            while j < len(program) and (program[j] != ")" or level != 1):
+                if program[j] == "(" and level == 0:
+                    openat = j
+                if program[j] == "(":
+                    level += 1
+                elif program[j] == ")":
+                    level -= 1
+                j += 1
+            if j == len(program):
+                raise Exception("Syntax error, malformed call to python (no closing paren)")
+            if program[openat] != "(":
+                raise "Syntax error, malformed call to python (no open paren)"
+            name = program[curprog+1:openat]
+            args = program[openat+1:j]
+            fio = FunArgIO(io)
+            position = interpret(args, fio, loc, glob, tape, rtape, position)
+            params = fio.output
+            res = 0
+            if name in loc:
+                res = loc[name](*params)
+            elif name in glob:
+                res = glob[name](*params)
+            if res:
+                if position > 0:
+                    tape[position] = res
+                else:
+                    rtape[position] = res
+            curprog = j
         curprog += 1
+    return position
 
 def main(args):
     program = args[0]
@@ -96,4 +162,9 @@ def main(args):
 
 if __name__ == '__main__':
     #main(sys.argv[1:])
-    print call_bf(',>,+++.<--.', [1,2])
+    def g(x):
+        return 2*x
+    def f(x=None):
+        return 7
+    print "1:", map(chr, call_bf(':s(+++++ +++++ [> +++++ +++++<-]>+++++ [>+>+>+<<<-]>. >+++++. >------.) .', [1], locals(), globals()))
+    print "2:", call_bf(',:g(.).', [1], locals(), globals())
