@@ -49,6 +49,11 @@ def make_set_anchor(game):
     def set_anchor(*args):
         game.set_anchor(*args)
     return set_anchor
+    
+def make_load_level(game):
+    def load_level(*args):
+        game.load_level("".join(args))
+    return load_level
 
 LEFT = 1
 RIGHT = 2
@@ -110,6 +115,7 @@ class Game(object):
         gl = make_get_data_len(self)
         dz = make_dozoom(self)
         sz = make_set_zoom(self)
+        ll = make_load_level(self)
         brainfuck.call_bf(brainfuck.get_content(fname), [], locals(), globals())
     def update(self, screen, left, right, space, click, (x,y)):
         for o in self.objects:
@@ -159,6 +165,7 @@ class GameObject:
         gl = make_get_data_len(game)
         dz = make_dozoom(game)
         sz = make_set_zoom(game)
+        ll = make_load_level(game)
         self.name = name
         self.data = brainfuck.call_bf(init_code, [], locals(), globals())
     def update(self, game, screen, left, right, space, click, (x,y)):
@@ -169,6 +176,7 @@ class GameObject:
         dz = make_dozoom(game)
         sz = make_set_zoom(game)
         sa = make_set_anchor(game)
+        ll = make_load_level(game)
         def dr(*args):
             r,g,b = args[:3]
             x,y,w,h = args[3:7]
@@ -185,7 +193,7 @@ class GameObject:
         def p(*args):
             print args
         t1 = time.time()
-        self.data = brainfuck.call_bf(self.update_code, [t1-self.t, left, right, space, 0, 0, 0] + self.data, locals(), globals())
+        self.data = brainfuck.call_bf(self.update_code, [t1-self.t, left, right, space, click, x, y] + self.data, locals(), globals())
         self.t = t1
     def get_bb(self):
         result = brainfuck.call_bf(self.bounding_box, self.data[:], locals(), globals())
@@ -199,6 +207,7 @@ class GameObject:
         dz = make_dozoom(game)
         sz = make_set_zoom(game)
         sa = make_set_anchor(game)
+        ll = make_load_level(game)
         def dr(*args):
             r,g,b = args[:3]
             x,y,w,h = args[3:7]
